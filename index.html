@@ -1,0 +1,1266 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BIG | Professional Management System</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/medium-zoom/1.0.6/medium-zoom.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/medium-zoom/1.0.6/medium-zoom.min.js"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage-compat.js"></script>
+
+    <style>
+        :root { 
+            --glass-bg: rgba(0, 0, 0, 0.85); 
+            --glass-border: rgba(255, 255, 255, 0.1); 
+            --accent: #ffffff;
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body { 
+            background: #050505; 
+            color: #fff; 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            margin: 0; 
+            overflow-x: hidden; 
+            min-height: 100vh;
+        }
+
+        #bg-canvas { 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            z-index: -1; 
+        }
+
+        .glass-panel { 
+            background: var(--glass-bg); 
+            backdrop-filter: blur(30px); 
+            -webkit-backdrop-filter: blur(30px);
+            border: 1px solid var(--glass-border); 
+        }
+        
+        .admin-header { 
+            height: 48px; 
+            padding: 0 28px; 
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--glass-border);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .admin-header h2 {
+            font-size: clamp(0.65rem, 2vw, 0.8rem);
+        }
+
+        .admin-header .ui-btn-size {
+            height: 36px;
+            font-size: clamp(0.55rem, 2vw, 0.65rem);
+            padding: 0 15px;
+        }
+
+        .ui-btn-size { 
+            height: 42px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            border-radius: 12px; 
+            font-weight: 800; 
+            text-transform: uppercase; 
+            font-size: clamp(0.6rem, 2vw, 0.75rem); 
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+            border: 1px solid var(--glass-border); 
+            padding: 0 18px; 
+            background: rgba(255,255,255,0.03); 
+            color: white; 
+            cursor: pointer;
+            letter-spacing: 0.05em;
+        }
+
+        .ui-btn-size:hover { 
+            background: white; 
+            color: black; 
+            border-color: white; 
+            transform: translateY(-1px);
+        }
+
+        #paramFilterModal .ui-btn-size:nth-child(2), 
+        #loginModal button.text-zinc-600 { 
+            height: 46px !important;
+            font-size: clamp(0.65rem, 2vw, 0.75rem) !important;
+        }
+
+        .lang-group { 
+            display: flex; 
+            background: rgba(255,255,255,0.05); 
+            border-radius: 10px; 
+            border: 1px solid var(--glass-border); 
+            height: 40px; 
+            overflow: hidden; 
+            width: 140px; 
+        }
+
+        .lang-btn { 
+            flex: 1; 
+            font-size: clamp(0.55rem, 2vw, 0.65rem); 
+            font-weight: 800; 
+            transition: 0.2s; 
+            opacity: 0.4; 
+            color: white; 
+            border: none; 
+            cursor: pointer; 
+        }
+
+        .lang-btn.active { 
+            opacity: 1; 
+            background: rgba(255,255,255,0.1); 
+        }
+
+        input, select, textarea { 
+            background: rgba(255,255,255,0.05)!important; 
+            border: 1px solid var(--glass-border)!important; 
+            border-radius: 12px!important; 
+            color: white!important; 
+            padding: 10px 14px!important; 
+            font-size: clamp(0.75rem, 2.5vw, 0.9rem)!important; 
+            outline: none; 
+            width: 100%; 
+            transition: border-color 0.3s;
+        }
+
+        input:focus, textarea:focus {
+            border-color: rgba(255,255,255,0.4)!important;
+        }
+
+        select option {
+            background: #000 !important;
+            color: white !important;
+        }
+
+        select {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='white' width='12' height='12' viewBox='0 0 24 24'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 14px center;
+            background-size: 12px;
+        }
+
+        .medium-zoom-overlay {
+            z-index: 10000 !important;
+        }
+
+        .medium-zoom-image--opened {
+            z-index: 10001 !important;
+        }
+
+        #loader-screen { 
+            position: fixed; 
+            inset: 0; 
+            background: #000; 
+            z-index: 9999; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+        }
+
+        .notif-btn {
+            position: relative;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 50%;
+            transition: background 0.3s;
+        }
+        .notif-btn:hover { background: rgba(255,255,255,0.05); }
+
+        .red-dot {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            width: 8px;
+            height: 8px;
+            background: #ff3b30;
+            border-radius: 50%;
+            border: 2px solid #000;
+            animation: pulse-red 1.5s infinite;
+        }
+
+        @keyframes pulse-red {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.7); }
+            70% { transform: scale(1.2); box-shadow: 0 0 0 6px rgba(255, 59, 48, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 59, 48, 0); }
+        }
+
+        #notifPopup {
+            position: absolute;
+            top: 50px;
+            left: 0;
+            width: 320px;
+            max-height: 450px;
+            overflow-y: auto;
+            z-index: 1001;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            display: none;
+            flex-direction: column;
+            gap: 8px;
+            padding: 15px;
+            border-radius: 20px;
+        }
+
+        .notif-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            transition: 0.2s;
+        }
+        .notif-item:hover { background: rgba(255,255,255,0.06); }
+
+        .firefly { 
+            position: fixed; 
+            width: 3px; 
+            height: 3px; 
+            background: rgba(255,255,255,0.3); 
+            border-radius: 50%; 
+            pointer-events: none; 
+            z-index: -1; 
+            filter: blur(1px); 
+        }
+
+        .fade-in { animation: fadeIn 0.6s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+
+        .zoom-target { cursor: zoom-in; }
+
+        main {
+            padding: 1rem;
+        }
+        @media (min-width: 768px) { main { padding: 3rem; } }
+        @media (min-width: 1280px) { main { padding: 5rem; } }
+
+        #modelDetailsModal .glass-panel {
+            border-radius: 0;
+            height: 100vh;
+            max-height: none;
+            flex-direction: column;
+        }
+        @media (min-width: 768px) {
+            #modelDetailsModal .glass-panel {
+                border-radius: 40px;
+                height: auto;
+                max-height: 85vh;
+                flex-direction: row;
+            }
+        }
+
+        .text-8px, .text-9px, .text-10px, .text-11px {
+            font-size: clamp(0.5rem, 1.8vw, 0.7rem);
+        }
+
+        #logoDisplay {
+            font-size: clamp(1.25rem, 5vw, 2rem);
+        }
+
+        #cabName {
+            font-size: clamp(2.5rem, 10vw, 4.5rem);
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="bg-canvas"></canvas>
+    <div id="loader-screen">
+        <div class="text-white font-black italic tracking-widest animate-pulse uppercase text-sm">System loading...</div>
+    </div>
+
+    <header class="p-4 md:px-12 flex justify-between items-center sticky top-0 z-[150] backdrop-blur-xl bg-black/40 border-b border-white/5">
+        <h1 id="logoDisplay" onclick="location.reload()" class="font-black uppercase italic tracking-tighter cursor-pointer"></h1>
+        <div class="flex items-center gap-3">
+            <div class="lang-group">
+                <button onclick="changeLang('ru')" class="lang-btn" id="l-ru">RU</button>
+                <button onclick="changeLang('az')" class="lang-btn" id="l-az">AZ</button>
+                <button onclick="changeLang('en')" class="lang-btn" id="l-en">EN</button>
+            </div>
+            <button onclick="document.getElementById('paramFilterModal').classList.remove('hidden')" class="ui-btn-size" data-t="filter">Filter</button>
+            <button onclick="document.getElementById('loginModal').classList.remove('hidden')" class="ui-btn-size" data-t="access">Access</button>
+        </div>
+    </header>
+
+    <main class="max-w-[1600px] mx-auto relative z-10">
+        <div id="filterBar" class="flex flex-wrap gap-3 mb-12"></div>
+        <div id="modelsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8"></div>
+    </main>
+
+    <section id="adminPanel" class="hidden fixed inset-0 z-[160] bg-black/98 backdrop-blur-2xl overflow-y-auto">
+        <div class="admin-header">
+            <div class="flex items-center gap-6 relative">
+                <h2 class="text-sm font-black uppercase italic tracking-widest text-zinc-400">Control Unit</h2>
+                
+                <div class="notif-btn" onclick="toggleNotifs()">
+                    <svg class="w-5 h-5 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+                    </svg>
+                    <div id="notifDot" class="hidden red-dot"></div>
+                    
+                    <div id="notifPopup" class="glass-panel">
+                        <h4 class="text-[9px] font-black uppercase text-zinc-500 mb-2 tracking-widest border-b border-white/5 pb-2">Contract Alerts</h4>
+                        <div id="notifList" class="space-y-2"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-4">
+                <div id="adminBadge" class="text-[9px] font-bold px-3 py-1 bg-white/5 border border-white/10 rounded-full uppercase text-green-400">Terminal Active • <span id="currentAdminName"></span></div>
+                <button onclick="location.reload()" class="ui-btn-size !h-8 border-red-900/30 text-red-500 hover:!bg-red-500 hover:!text-white" data-t="exit">Exit</button>
+            </div>
+        </div>
+
+        <div class="max-w-[1400px] mx-auto p-4 md:p-10">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-10">
+                
+                <div id="settingsSection" class="hidden lg:col-span-4 space-y-6">
+                    <div class="glass-panel p-6 rounded-3xl">
+                        <h3 class="text-[10px] font-black text-zinc-500 uppercase mb-4 tracking-widest">Branding</h3>
+                        <input type="text" id="logoEdit" placeholder="Agency Name" class="mb-4">
+                        <label class="text-[9px] opacity-40 uppercase font-bold mb-2 block">Resume Categories:</label>
+                        <textarea id="filtersEdit" placeholder="Woman, Man, Kids..." class="h-24 mb-4"></textarea>
+                        <label class="text-[9px] opacity-40 uppercase font-bold mb-2 block">Resume Logo (Black/White PNG):</label>
+                        <input type="file" id="pdfLogoInp" class="mb-4 text-[10px]">
+                        <button onclick="saveGlobalSettings()" class="ui-btn-size w-full !bg-white !text-black" data-t="sync">Update System</button>
+                    </div>
+
+                    <div class="glass-panel p-6 rounded-3xl">
+                        <h3 class="text-[10px] font-black text-zinc-500 uppercase mb-4 tracking-widest">Admin Access</h3>
+                        <div id="userList" class="space-y-2 mb-4"></div>
+                        <div class="pt-4 border-t border-white/10 space-y-2">
+                            <input type="text" id="newLogin" placeholder="Login">
+                            <input type="password" id="newPass" placeholder="Security Key">
+                            <button onclick="registerNewUser()" class="ui-btn-size w-full">Add Administrator</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="formContainer" class="lg:col-span-12">
+                    <div class="glass-panel p-8 rounded-[40px]">
+                        <form id="addModelForm" class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <input type="hidden" id="mId">
+                            <div class="space-y-4">
+                                <h3 class="text-xs font-black uppercase text-zinc-400 mb-2">Talent Profile</h3>
+                                <input type="text" id="mName" placeholder="FULL NAME" required>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <input type="text" id="mMLogin" placeholder="PORTAL LOGIN" required>
+                                    <input type="password" id="mMPass" placeholder="PORTAL PASSWORD" required>
+                                </div>
+                                <div class="grid grid-cols-3 gap-2">
+                                    <input type="text" id="mPhone" placeholder="PHONE">
+                                    <input type="text" id="mInsta" placeholder="INSTAGRAM">
+                                    <input type="email" id="mEmail" placeholder="EMAIL">
+                                </div>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <select id="mStatus">
+                                        <option value="Active">STATUS: ACTIVE</option>
+                                        <option value="Inactive">STATUS: INACTIVE</option>
+                                    </select>
+                                    <input type="date" id="mExpiry" title="Contract Expiry Date">
+                                </div>
+                                <select id="mCat"></select>
+                                <div class="grid grid-cols-3 gap-2">
+                                    <input type="number" id="mH" placeholder="HEIGHT">
+                                    <input type="number" id="mW" placeholder="WEIGHT">
+                                    <input type="number" id="mS" placeholder="SHOE">
+                                </div>
+                                <input type="text" id="mP" placeholder="MEASUREMENTS (e.g. 90-60-90)">
+                            </div>
+                            <div class="flex flex-col gap-4">
+                                <h3 class="text-xs font-black uppercase text-zinc-400 mb-2">Media & Biography</h3>
+                                <textarea id="mShows" placeholder="CAREER HIGHLIGHTS & EXPERIENCE" class="flex-1 min-h-[160px]"></textarea>
+                                <div class="p-4 border-2 border-dashed border-white/10 rounded-2xl text-center">
+                                    <label class="text-[10px] uppercase font-bold opacity-50 block mb-2">Portfolio Upload (Multiple)</label>
+                                    <input type="file" id="fInp" multiple class="text-[10px] text-zinc-500">
+                                </div>
+                                <button type="submit" class="ui-btn-size !h-16 !bg-white !text-black shadow-xl shadow-white/5" data-t="deploy">Save Changes</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-16 pb-32">
+                <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+                    <h3 class="text-xl font-black uppercase italic">Talent Database</h3>
+                    <input type="text" id="adminSearch" oninput="renderAdminModels()" placeholder="Search by name..." class="max-w-sm">
+                </div>
+                <div id="adminModelsList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"></div>
+            </div>
+        </div>
+    </section>
+
+    <section id="modelCabinet" class="hidden fixed inset-0 z-[160] bg-black/98 backdrop-blur-2xl overflow-y-auto p-4 md:p-12">
+        <div class="max-w-6xl mx-auto pt-20">
+            <div class="flex flex-col md:flex-row justify-between items-end mb-16 border-b border-white/5 pb-8 gap-6">
+                <div>
+                    <h2 id="cabName" class="font-black uppercase italic mb-2 tracking-tighter"></h2>
+                    <p class="text-zinc-500 text-[10px] tracking-[0.3em] uppercase">Professional Model Interface</p>
+                </div>
+                <div class="flex gap-3">
+                    <button onclick="downloadResume()" class="ui-btn-size !bg-white !text-black shadow-lg">Generate PDF Portfolio</button>
+                    <button onclick="signOutModel()" class="ui-btn-size border-red-900/40 text-red-500">Sign Out</button>
+                </div>
+            </div>
+            
+            <div id="cabStats" class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-12"></div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 pb-20">
+                <div class="glass-panel p-8 rounded-[40px] h-fit">
+                    <h3 class="text-[10px] font-black uppercase mb-6 text-zinc-500 tracking-widest">Career History</h3>
+                    <div id="cabShows" class="text-zinc-300 italic text-sm leading-relaxed whitespace-pre-line"></div>
+                </div>
+                <div class="lg:col-span-2 glass-panel p-8 rounded-[40px]">
+                    <h3 class="text-[10px] font-black uppercase mb-8 tracking-widest">Visual Portfolio</h3>
+                    <div id="cabPhotos" class="grid grid-cols-2 sm:grid-cols-3 gap-4"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div id="loginModal" class="hidden fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl">
+        <div class="glass-panel p-12 rounded-[40px] w-full max-w-sm text-center">
+            <h3 class="text-xl font-black uppercase mb-8 italic">Secure Login</h3>
+            <input type="text" id="lInp" placeholder="USER ID" class="text-center mb-4">
+            <input type="password" id="pInp" placeholder="ACCESS KEY" class="text-center mb-4">
+            <button onclick="handleAuth()" class="ui-btn-size w-full !bg-white !text-black !h-14">Authorize</button>
+            <button onclick="document.getElementById('loginModal').classList.add('hidden')" class="text-zinc-600 text-[9px] mt-10 uppercase font-black hover:text-white transition">Cancel</button>
+        </div>
+    </div>
+
+    <div id="paramFilterModal" class="hidden fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/90 backdrop-blur-xl">
+        <div class="glass-panel p-10 rounded-[40px] w-full max-w-md">
+            <h3 class="text-sm font-black uppercase mb-6 text-center">Search Parameters</h3>
+            <div class="space-y-4">
+                <div class="grid grid-cols-2 gap-2">
+                    <input type="number" id="fMinH" placeholder="Min Height">
+                    <input type="number" id="fMaxW" placeholder="Max Weight">
+                </div>
+                <input type="text" id="fParams" placeholder="Measurements Keywords">
+                <div class="flex gap-2 pt-4">
+                    <button onclick="applyFilters()" class="ui-btn-size flex-1 !bg-white !text-black" data-t="apply">Apply</button>
+                    <button onclick="resetFilters()" class="ui-btn-size flex-1" data-t="reset">Reset</button>
+                </div>
+                <button onclick="document.getElementById('paramFilterModal').classList.add('hidden')" class="w-full text-[9px] text-zinc-500 uppercase font-black mt-2">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modelDetailsModal" class="hidden fixed inset-0 z-[200] flex items-end md:items-center justify-center md:p-4 bg-black/95 backdrop-blur-2xl">
+        <div class="glass-panel w-full max-w-6xl md:rounded-[40px] flex flex-col md:flex-row overflow-hidden relative h-full md:max-h-[85vh]">
+            <button onclick="closeDetails()" class="absolute top-6 right-6 text-white text-4xl z-50 hover:scale-110 transition">×</button>
+            <div class="w-full md:w-1/2 p-4 flex flex-col justify-center bg-black/20 overflow-hidden">
+                <img id="mainDetailImg" src="" class="zoom-target object-contain h-full max-h-[70vh] rounded-2xl">
+                <div id="thumbContainer" class="flex gap-2 mt-4 overflow-x-auto w-full justify-center pb-2"></div>
+            </div>
+            <div class="w-full md:w-1/2 p-6 md:p-16 flex flex-col justify-center">
+                <h2 id="detailName" class="text-4xl md:text-6xl font-black uppercase italic mb-8 tracking-tighter"></h2>
+                <div id="detailGrid" class="grid grid-cols-2 gap-4 mb-8"></div>
+                <a id="waLink" href="#" target="_blank" class="ui-btn-size !h-16 !bg-white !text-black shadow-xl">Contact / Book Talent</a>
+            </div>
+        </div>
+    </div>
+
+    <div id="modelInfoModal" class="hidden fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/90 backdrop-blur-xl">
+        <div class="glass-panel p-10 rounded-[40px] w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-8">
+                <h3 class="text-xl font-black uppercase italic">Talent Information</h3>
+                <button onclick="document.getElementById('modelInfoModal').classList.add('hidden')" class="text-4xl">&times;</button>
+            </div>
+            <div id="modelInfoContent" class="space-y-6 text-sm"></div>
+        </div>
+    </div>
+
+    <div id="adminStatsModal" class="hidden fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/90 backdrop-blur-xl">
+        <div class="glass-panel p-8 rounded-3xl w-full max-w-md">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-lg font-black uppercase italic">Admin Usage Statistics</h3>
+                <button onclick="document.getElementById('adminStatsModal').classList.add('hidden')" class="text-3xl">&times;</button>
+            </div>
+            <div id="adminStatsContent" class="space-y-3 text-sm"></div>
+        </div>
+    </div>
+
+    <script>
+        const translations = {
+            ru: { filter: "Фильтр", access: "Вход", console: "Консоль", exit: "Выход", sync: "Обновить", deploy: "Сохранить", all: "Все", apply: "Применить", reset: "Сброс", height: "Рост", weight: "Вес", shoe: "Обувь", status: "Статус", expiry: "Контракт", params: "Параметры", woman: "Девушки", man: "Мужчины", kids: "Дети" },
+            az: { filter: "Filtr", access: "Giriş", console: "Konsol", exit: "Çıxış", sync: "Yenilə", deploy: "Yadda saxla", all: "Hamısı", apply: "Tətbiq", reset: "Sıfırla", height: "Boy", weight: "Çəki", shoe: "Ayaqqabı", status: "Status", expiry: "Müqavilə", params: "Ölçülər", woman: "Qadınlar", man: "Kişilər", kids: "Uşaqlar" },
+            en: { filter: "Filter", access: "Access", console: "Console", exit: "Exit", sync: "Sync", deploy: "Save", all: "All", apply: "Apply", reset: "Reset", height: "Height", weight: "Weight", shoe: "Shoe", status: "Status", expiry: "Expiry", params: "Params", woman: "Women", man: "Men", kids: "Kids" }
+        };
+
+        let state = {
+            lang: localStorage.getItem('lastLang') || 'ru',
+            logo: "BIG", 
+            categories: ["All"], 
+            models: [], 
+            users: [],
+            currentFilter: "All", 
+            paramsFilter: { minH: 0, maxW: 999, queryP: "" },
+            pdfLogo: null, 
+            mouse: { x: 0, y: 0 },
+            currentModel: null,
+            currentAdmin: null,
+            lastLoginTime: {}, 
+            sessionStartTime: null
+        };
+
+        window.currentZoom = null;
+
+        const firebaseConfig = { databaseURL: "https://big-agency-default-rtdb.firebaseio.com" }; 
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        const storage = firebase.storage();
+
+        // Санитизация ключей для Firebase Realtime Database
+        function sanitizeKey(str) {
+            if (typeof str !== 'string') return str;
+            return str.replace(/[.#$[\]/]/g, '_');
+        }
+
+        db.ref('agency_cloud_v1').on('value', snap => {
+            const data = snap.val() || {};
+            state.logo = data.logo || "BIG";
+            state.categories = Array.isArray(data.categories) ? data.categories : ["All"];
+            state.models = Array.isArray(data.models) ? data.models : [];
+            state.users = Array.isArray(data.users) ? data.users : [];
+            state.pdfLogo = data.pdfLogo || null;
+            state.lastLoginTime = data.lastLoginTime || {};
+            
+            if (state.users.length === 0) {
+                state.users = [{login: "admin", hash: "5d3a967f3c2f77278067583633916955acea6bc8e3500f3d4ded8c74827cf3e604c49450f6294dfde71ef6710efe6430"}];
+            }
+            
+            render();
+            checkExpirations();
+            document.getElementById('loader-screen').style.display = 'none';
+        });
+
+        const sync = () => db.ref('agency_cloud_v1').update({ 
+            models: state.models, 
+            logo: state.logo, 
+            categories: state.categories, 
+            pdfLogo: state.pdfLogo, 
+            users: state.users,
+            lastLoginTime: state.lastLoginTime
+        });
+
+        function changeLang(l) { 
+            state.lang = l; 
+            localStorage.setItem('lastLang', l); 
+            document.getElementById(`l-${l}`).classList.add('active');
+            ['ru','az','en'].filter(x=>x!==l).forEach(x=>document.getElementById(`l-${x}`).classList.remove('active'));
+            render(); 
+        }
+
+        function formatSeconds(totalSec) {
+            if (!totalSec || totalSec === 0) return '—';
+            const h = Math.floor(totalSec / 3600);
+            const m = Math.floor((totalSec % 3600) / 60);
+            const s = totalSec % 60;
+            return `${h > 0 ? h + 'h ' : ''}${m > 0 ? m + 'm ' : ''}${s}s`.trim() || '0s';
+        }
+
+        function render() {
+            document.getElementById('logoDisplay').innerText = state.logo;
+            document.querySelectorAll('[data-t]').forEach(el => { 
+                const k = el.dataset.t; 
+                if(translations[state.lang][k]) el.innerText = translations[state.lang][k]; 
+            });
+
+            document.getElementById('filterBar').innerHTML = state.categories.map(c => {
+                let label = (c === 'All') ? translations[state.lang].all : (translations[state.lang][c.toLowerCase()] || c);
+                return `<button onclick="state.currentFilter='${c}'; render()" class="px-6 py-2.5 rounded-xl text-[10px] font-black uppercase transition ${state.currentFilter === c ? 'bg-white text-black' : 'bg-white/5 text-zinc-500'}">${label}</button>`;
+            }).join('');
+
+            const filtered = state.models.filter(m => {
+                const cM = (state.currentFilter === 'All' || m.cat === state.currentFilter);
+                const hM = parseInt(m.height || 0) >= state.paramsFilter.minH;
+                const wM = parseInt(m.weight || 999) <= state.paramsFilter.maxW;
+                const pM = (m.params || '').toLowerCase().includes(state.paramsFilter.queryP.toLowerCase());
+                const activeM = m.status ? m.status !== 'Inactive' : true;
+                return cM && hM && wM && pM && activeM;
+            });
+
+            document.getElementById('modelsGrid').innerHTML = filtered.map(m => `
+                <div onclick="showDetails(${m.id})" class="glass-panel rounded-[30px] overflow-hidden group cursor-pointer transition hover:scale-[1.02] fade-in">
+                    <img src="${m.imgs?.[0] || 'https://via.placeholder.com/600x800?text=No+Image'}" class="aspect-[3/4] object-cover w-full grayscale group-hover:grayscale-0 duration-700">
+                    <div class="p-6 flex justify-between items-center">
+                        <div>
+                            <h3 class="font-black uppercase italic text-sm">${m.name}</h3>
+                            <p class="text-[8px] opacity-40 uppercase tracking-widest mt-1">${m.cat}</p>
+                        </div>
+                        <span class="text-[9px] opacity-40 font-bold">${m.height} CM</span>
+                    </div>
+                </div>`).join('');
+
+            document.getElementById('mCat').innerHTML = state.categories.filter(c=>c!=='All').map(c=>`<option value="${c}">${c}</option>`).join('');
+
+            renderAdminModels();
+            renderAdminUsers();
+
+            // Инициализация зума на главной странице
+            if (window.currentZoom) window.currentZoom.detach();
+            window.currentZoom = mediumZoom('#modelsGrid img', { background: '#000', margin: 20 });
+        }
+
+        window.editModel = (id) => {
+            const m = state.models.find(x => x.id == id);
+            if (!m) return;
+            
+            document.getElementById('mId').value = m.id;
+            document.getElementById('mName').value = m.name;
+            document.getElementById('mMLogin').value = m.modelLogin || '';
+            document.getElementById('mMPass').value = m.modelPass || '';
+            document.getElementById('mPhone').value = m.phone || '';
+            document.getElementById('mInsta').value = m.insta || '';
+            document.getElementById('mEmail').value = m.email || '';
+            document.getElementById('mStatus').value = m.status || 'Active';
+            document.getElementById('mExpiry').value = m.expiry || '';
+            document.getElementById('mCat').value = m.cat;
+            document.getElementById('mH').value = m.height || '';
+            document.getElementById('mW').value = m.weight || '';
+            document.getElementById('mS').value = m.shoe || '';
+            document.getElementById('mP').value = m.params || '';
+            document.getElementById('mShows').value = m.shows || '';
+            
+            document.querySelector('#formContainer').scrollIntoView({ behavior: 'smooth' });
+        };
+
+        document.getElementById('addModelForm').onsubmit = async (e) => {
+            e.preventDefault();
+            
+            const id = document.getElementById('mId').value || Date.now();
+            const existingIndex = state.models.findIndex(x => x.id == id);
+            let imgs = existingIndex >= 0 ? state.models[existingIndex].imgs || [] : [];
+            
+            // Загрузка фотографий
+            const files = document.getElementById('fInp').files;
+            if (files.length > 0) {
+                for (const file of files) {
+                    const storageRef = storage.ref(`models/${id}/${Date.now()}_${file.name}`);
+                    await storageRef.put(file);
+                    const url = await storageRef.getDownloadURL();
+                    imgs.push(url);
+                }
+                document.getElementById('fInp').value = '';
+            }
+
+            const model = {
+                id,
+                name: document.getElementById('mName').value.trim(),
+                modelLogin: sanitizeKey(document.getElementById('mMLogin').value.trim()),
+                modelPass: document.getElementById('mMPass').value,
+                phone: document.getElementById('mPhone').value.trim(),
+                insta: document.getElementById('mInsta').value.trim(),
+                email: document.getElementById('mEmail').value.trim(),
+                status: document.getElementById('mStatus').value,
+                expiry: document.getElementById('mExpiry').value || null,
+                cat: document.getElementById('mCat').value,
+                height: document.getElementById('mH').value,
+                weight: document.getElementById('mW').value,
+                shoe: document.getElementById('mS').value,
+                params: document.getElementById('mP').value.trim(),
+                shows: document.getElementById('mShows').value.trim(),
+                imgs: imgs
+            };
+
+            if (existingIndex >= 0) {
+                state.models[existingIndex] = model;
+            } else {
+                state.models.push(model);
+            }
+
+            sync();
+            render();
+            e.target.reset();
+            document.getElementById('mId').value = '';
+        };
+
+        window.deleteModel = (id) => {
+            if (confirm('Delete this model permanently?')) {
+                state.models = state.models.filter(m => m.id != id);
+                sync();
+                render();
+            }
+        };
+
+        window.saveGlobalSettings = () => {
+            state.logo = document.getElementById('logoEdit').value.trim() || 'BIG';
+            const cats = document.getElementById('filtersEdit').value.split(',').map(c => c.trim()).filter(c => c);
+            state.categories = ['All', ...cats];
+            sync();
+            render();
+        };
+
+        function applyFilters() {
+            state.paramsFilter.minH = parseInt(document.getElementById('fMinH').value) || 0;
+            state.paramsFilter.maxW = parseInt(document.getElementById('fMaxW').value) || 999;
+            state.paramsFilter.queryP = document.getElementById('fParams').value.trim();
+            render();
+            document.getElementById('paramFilterModal').classList.add('hidden');
+        }
+
+        function resetFilters() {
+            document.getElementById('fMinH').value = '';
+            document.getElementById('fMaxW').value = '';
+            document.getElementById('fParams').value = '';
+            state.paramsFilter = { minH: 0, maxW: 999, queryP: "" };
+            render();
+        }
+
+        function showDetails(id) {
+            const m = state.models.find(x => x.id == id);
+            if (!m) return;
+            const t = translations[state.lang];
+            document.getElementById('detailName').innerText = m.name;
+            document.getElementById('detailGrid').innerHTML = `
+                <div class="bg-white/5 p-6 rounded-3xl text-center border border-white/5">
+                    <span class="text-[10px] uppercase opacity-40">${t.height}</span><br><b class="text-xl">${m.height} CM</b>
+                </div>
+                <div class="bg-white/5 p-6 rounded-3xl text-center border border-white/5">
+                    <span class="text-[10px] uppercase opacity-40">${t.shoe}</span><br><b class="text-xl">${m.shoe}</b>
+                </div>
+                <div class="bg-white/5 p-6 rounded-3xl col-span-2 text-center border border-white/5">
+                    <span class="text-[10px] uppercase opacity-40">${t.params}</span><br><i class="text-lg font-bold">${m.params || '-'}</i>
+                </div>`;
+            
+            document.getElementById('mainDetailImg').src = m.imgs?.[0] || 'https://via.placeholder.com/800x1200?text=No+Image';
+            document.getElementById('thumbContainer').innerHTML = (m.imgs || []).map(i => `
+                <img src="${i}" onclick="changeMainImg('${i}')" class="h-16 w-12 object-cover rounded-lg cursor-pointer opacity-40 hover:opacity-100 transition">
+            `).join('');
+            
+            document.getElementById('modelDetailsModal').classList.remove('hidden');
+            document.getElementById('waLink').href = `https://wa.me/YOUR_PHONE?text=Booking: ${encodeURIComponent(m.name)}`;
+
+            if (window.currentZoom) window.currentZoom.detach();
+            window.currentZoom = mediumZoom('.zoom-target', { background: '#000', margin: 20 });
+        }
+
+        function closeDetails() { 
+            document.getElementById('modelDetailsModal').classList.add('hidden'); 
+            if (window.currentZoom) window.currentZoom.detach();
+        }
+
+        function changeMainImg(src) {
+            document.getElementById('mainDetailImg').src = src;
+            if (window.currentZoom) window.currentZoom.detach();
+            window.currentZoom = mediumZoom('.zoom-target', { background: '#000', margin: 20 });
+        }
+
+        function openCabinet(m) {
+            state.currentModel = m;
+            document.getElementById('modelCabinet').classList.remove('hidden');
+            document.getElementById('cabName').innerText = m.name;
+            const t = translations[state.lang];
+            
+            // Цвет для даты окончания контракта
+            let contractColor = '';
+            if (m.expiry) {
+                const daysLeft = Math.ceil((new Date(m.expiry) - new Date()) / (1000 * 60 * 60 * 24));
+                if (daysLeft >= 0 && daysLeft <= 10) {
+                    const ratio = daysLeft / 10; // 1 = 10 дней, 0 = 0 дней
+                    const r = 255;
+                    const g = Math.round(165 * ratio); // от 165 (оранжевый) до 0 (красный)
+                    const b = 0;
+                    contractColor = `style="color: rgb(${r},${g},${b});"`;
+                }
+            }
+
+            document.getElementById('cabStats').innerHTML = `
+                <div class="glass-panel p-6 rounded-2xl text-center">
+                    <span class="text-[10px] uppercase opacity-40">${t.height}</span><br><b>${m.height} cm</b>
+                </div>
+                <div class="glass-panel p-6 rounded-2xl text-center">
+                    <span class="text-[10px] uppercase opacity-40">${t.weight}</span><br><b>${m.weight} kg</b>
+                </div>
+                <div class="glass-panel p-6 rounded-2xl text-center">
+                    <span class="text-[10px] uppercase opacity-40">${t.shoe}</span><br><b>${m.shoe}</b>
+                </div>
+                <div class="glass-panel p-6 rounded-2xl text-center">
+                    <span class="text-[10px] uppercase opacity-40">Status</span><br><b class="text-green-500 uppercase">${m.status || 'Active'}</b>
+                </div>
+                <div class="glass-panel p-6 rounded-2xl text-center">
+                    <span class="text-[10px] uppercase opacity-40">${t.expiry}</span><br><b ${contractColor}>${m.expiry || '-'}</b>
+                </div>`;
+
+            document.getElementById('cabShows').innerText = m.shows || "No data available";
+            document.getElementById('cabPhotos').innerHTML = (m.imgs || []).map(i => `
+                <img src="${i}" class="zoom-target aspect-[3/4] object-cover rounded-2xl border border-white/5 shadow-2xl">
+            `).join('');
+
+            if (window.currentZoom) window.currentZoom.detach();
+            window.currentZoom = mediumZoom('#cabPhotos .zoom-target', { background: '#000', margin: 20 });
+        }
+
+        window.showModelInfo = (id) => {
+            const m = state.models.find(x => x.id == id);
+            if (!m) return;
+
+            const sessions = state.lastLoginTime[m.modelLogin] || {};
+            let dailyList = '';
+            Object.keys(sessions).sort().reverse().forEach(date => {
+                dailyList += `<p class="text-[10px]"><b>${date}:</b> ${formatSeconds(sessions[date])}</p>`;
+            });
+            if (dailyList === '') dailyList = '<p class="text-zinc-500">No recorded sessions</p>';
+
+            const totalSec = Object.values(sessions).reduce((a, b) => a + b, 0);
+
+            document.getElementById('modelInfoContent').innerHTML = `
+                <div class="grid grid-cols-2 gap-6">
+                    <div>
+                        <p><b>Name:</b> ${m.name}</p>
+                        <p><b>Category:</b> ${m.cat}</p>
+                        <p><b>Height:</b> ${m.height || '-'} cm</p>
+                        <p><b>Weight:</b> ${m.weight || '-'} kg</p>
+                        <p><b>Shoe:</b> ${m.shoe || '-'}</p>
+                        <p><b>Measurements:</b> ${m.params || '-'}</p>
+                        <p><b>Status:</b> ${m.status || 'Active'}</p>
+                        <p><b>Contract expiry:</b> ${m.expiry || '-'}</p>
+                        <p><b>Portal login:</b> ${m.modelLogin || '-'}</p>
+                        <p><b>Portal password:</b> ${m.modelPass || '-'}</p>
+                    </div>
+                    <div>
+                        <p><b>Phone:</b> ${m.phone || '-'}</p>
+                        <p><b>Instagram:</b> ${m.insta || '-'}</p>
+                        <p><b>Email:</b> ${m.email || '-'}</p>
+                        <p><b>Total time in system:</b> ${formatSeconds(totalSec)}</p>
+                    </div>
+                </div>
+                <div class="mt-8 border-t border-white/10 pt-6">
+                    <h4 class="text-sm font-black uppercase mb-3">Career highlights</h4>
+                    <p class="whitespace-pre-line text-zinc-300">${m.shows || '—'}</p>
+                </div>
+                <div class="mt-8 border-t border-white/10 pt-6">
+                    <h4 class="text-sm font-black uppercase mb-3">System usage (daily)</h4>
+                    ${dailyList}
+                </div>
+            `;
+
+            document.getElementById('modelInfoModal').classList.remove('hidden');
+        };
+
+        async function hashPassword(password) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(password);
+            const salt = crypto.getRandomValues(new Uint8Array(16));
+            const key = await crypto.subtle.importKey("raw", data, {name: "PBKDF2"}, false, ["deriveBits"]);
+            const derivedBits = await crypto.subtle.deriveBits({name: "PBKDF2", salt, iterations: 100000, hash: 'SHA-256'}, key, 256);
+            const hashArray = Array.from(new Uint8Array(derivedBits));
+            const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+            const saltHex = Array.from(salt).map(b => b.toString(16).padStart(2, '0')).join('');
+            return saltHex + hashHex;
+        }
+
+        async function verifyPassword(storedHash, password) {
+            if (storedHash.length !== 64 + 32) return false;
+            const saltHex = storedHash.substring(0, 32);
+            const storedHashHex = storedHash.substring(32);
+            const salt = Uint8Array.from(saltHex.match(/.{2}/g).map(byte => parseInt(byte, 16)));
+            const encoder = new TextEncoder();
+            const data = encoder.encode(password);
+            const key = await crypto.subtle.importKey("raw", data, {name: "PBKDF2"}, false, ["deriveBits"]);
+            const derivedBits = await crypto.subtle.deriveBits({name: "PBKDF2", salt, iterations: 100000, hash: 'SHA-256'}, key, 256);
+            const hashArray = Array.from(new Uint8Array(derivedBits));
+            const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+            return hashHex === storedHashHex;
+        }
+
+        async function handleAuth() {
+            const l = document.getElementById('lInp').value.trim();
+            const p = document.getElementById('pInp').value;
+
+            let foundAdmin = null;
+            for (const u of state.users) {
+                if (u.login === l) {
+                    if (u.hash) {
+                        if (await verifyPassword(u.hash, p)) {
+                            foundAdmin = u;
+                            break;
+                        }
+                    } else if (u.pass === p) {
+                        foundAdmin = u;
+                        break;
+                    }
+                }
+            }
+
+            if (foundAdmin) {
+                state.currentAdmin = l;
+                document.getElementById('currentAdminName').innerText = l;
+                document.getElementById('loginModal').classList.add('hidden');
+                document.getElementById('adminPanel').classList.remove('hidden');
+
+                state.sessionStartTime = Date.now();
+
+                if (l === 'admin') {
+                    document.getElementById('settingsSection').classList.remove('hidden');
+                    document.getElementById('formContainer').className = 'lg:col-span-8';
+                    document.getElementById('logoEdit').value = state.logo;
+                    document.getElementById('filtersEdit').value = state.categories.filter(c=>c!=='All').join(', ');
+                }
+                return;
+            }
+
+            const model = state.models.find(m => m.modelLogin === sanitizeKey(l) && m.modelPass === p);
+            if (model) { 
+                document.getElementById('loginModal').classList.add('hidden'); 
+                openCabinet(model); 
+                state.sessionStartTime = Date.now();
+            } else {
+                alert('ACCESS DENIED');
+            }
+        }
+
+        window.registerNewUser = async () => {
+            const l = document.getElementById('newLogin').value.trim();
+            const p = document.getElementById('newPass').value;
+            if (l && p) { 
+                const hashed = await hashPassword(p);
+                state.users.push({login: l, hash: hashed}); 
+                sync(); 
+                document.getElementById('newLogin').value = '';
+                document.getElementById('newPass').value = '';
+                renderAdminUsers();
+            }
+        };
+
+        window.deleteAdmin = (i) => {
+            if(confirm('Revoke access for this admin?')) {
+                state.users.splice(i, 1);
+                sync();
+                renderAdminUsers();
+            }
+        };
+
+        window.renderAdminUsers = () => {
+            document.getElementById('userList').innerHTML = state.users.map((u, i) => {
+                const totalSec = Object.values(state.lastLoginTime[u.login] || {}).reduce((a, b) => a + b, 0);
+                const timeStr = formatSeconds(totalSec);
+
+                return `
+                    <div class="flex justify-between items-center bg-white/5 p-3 rounded-xl text-[10px] border border-white/5">
+                        <div class="flex items-center gap-3">
+                            <span class="font-bold opacity-60">${u.login}</span>
+                            <button onclick="showAdminStats('${u.login}')" class="text-[9px] font-black px-2 py-1 bg-white/10 rounded hover:bg-white hover:text-black transition">!</button>
+                            <span class="text-[9px] text-zinc-400">${timeStr}</span>
+                        </div>
+                        ${u.login !== 'admin' ? `<button onclick="deleteAdmin(${i})" class="text-red-500 font-black uppercase">Revoke</button>` : '<span class="text-zinc-600 uppercase font-black">Root</span>'}
+                    </div>
+                `;
+            }).join('');
+        };
+
+        window.showAdminStats = (login) => {
+            const sessions = state.lastLoginTime[login] || {};
+            const dates = Object.keys(sessions).sort().reverse();
+            
+            let dailyList = '';
+            if (dates.length === 0) {
+                dailyList = '<p class="text-zinc-500 text-center">No recorded sessions</p>';
+            } else {
+                dailyList = dates.map(date => {
+                    return `<div class="flex justify-between py-1 border-b border-white/5">
+                        <span class="text-[11px]">${date}</span>
+                        <span class="text-[11px] font-bold">${formatSeconds(sessions[date])}</span>
+                    </div>`;
+                }).join('');
+            }
+
+            const totalSec = Object.values(sessions).reduce((a, b) => a + b, 0);
+
+            document.getElementById('adminStatsContent').innerHTML = `
+                <div class="mb-4">
+                    <p class="text-center text-zinc-400 text-[10px] uppercase mb-2">Administrator: ${login}</p>
+                    <p class="text-center text-lg font-black">Total: ${formatSeconds(totalSec)}</p>
+                </div>
+                <div class="max-h-64 overflow-y-auto">
+                    ${dailyList}
+                </div>
+            `;
+
+            document.getElementById('adminStatsModal').classList.remove('hidden');
+        };
+
+        window.renderAdminModels = () => {
+            const q = document.getElementById('adminSearch').value.toLowerCase();
+            document.getElementById('adminModelsList').innerHTML = state.models.filter(m => m.name.toLowerCase().includes(q)).map(m => {
+                const totalSec = Object.values(state.lastLoginTime[m.modelLogin] || {}).reduce((a, b) => a + b, 0);
+                const timeStr = formatSeconds(totalSec);
+
+                return `
+                    <div class="glass-panel p-4 rounded-2xl flex items-center justify-between border-white/5">
+                        <div class="flex items-center gap-3">
+                            <img src="${m.imgs?.[0] || 'https://via.placeholder.com/80?text=No+Img'}" class="w-8 h-8 rounded-full object-cover">
+                            <div>
+                                <span class="text-[11px] font-black uppercase italic">${m.name}</span>
+                                <p class="text-[9px] text-zinc-500">Time: ${timeStr}</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="showModelInfo(${m.id})" class="text-[9px] font-black px-3 py-1 bg-white/10 rounded-lg hover:bg-white hover:text-black transition">!</button>
+                            <button onclick="editModel(${m.id})" class="text-[9px] font-black px-3 py-1 bg-white/5 rounded-lg hover:bg-white hover:text-black transition">EDIT</button>
+                            <button onclick="deleteModel(${m.id})" class="text-[9px] font-black px-3 py-1 text-red-500">DEL</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        };
+
+        window.addEventListener('beforeunload', () => {
+            if (state.sessionStartTime && (state.currentAdmin || state.currentModel)) {
+                const durationSec = Math.floor((Date.now() - state.sessionStartTime) / 1000);
+                if (durationSec > 0) {
+                    const login = state.currentAdmin || state.currentModel.modelLogin;
+                    const today = new Date().toISOString().split('T')[0];
+                    if (!state.lastLoginTime[login]) state.lastLoginTime[login] = {};
+                    state.lastLoginTime[login][today] = (state.lastLoginTime[login][today] || 0) + durationSec;
+                    sync();
+                }
+            }
+        });
+
+        function signOutModel() {
+            if (state.sessionStartTime && state.currentModel) {
+                const durationSec = Math.floor((Date.now() - state.sessionStartTime) / 1000);
+                if (durationSec > 0) {
+                    const login = state.currentModel.modelLogin;
+                    const today = new Date().toISOString().split('T')[0];
+                    if (!state.lastLoginTime[login]) state.lastLoginTime[login] = {};
+                    state.lastLoginTime[login][today] = (state.lastLoginTime[login][today] || 0) + durationSec;
+                    sync();
+                }
+            }
+            state.currentModel = null;
+            state.sessionStartTime = null;
+            document.getElementById('modelCabinet').classList.add('hidden');
+            location.reload();
+        }
+
+        function toggleNotifs() {
+            const p = document.getElementById('notifPopup');
+            p.style.display = (p.style.display === 'flex') ? 'none' : 'flex';
+        }
+
+        function checkExpirations() {
+            const now = new Date();
+            const expiring = state.models.filter(m => {
+                if (!m.expiry) return false;
+                const diff = Math.ceil((new Date(m.expiry) - now) / (1000 * 60 * 60 * 24));
+                return diff <= 20 && diff >= 0;
+            });
+
+            const dot = document.getElementById('notifDot');
+            const list = document.getElementById('notifList');
+
+            if (expiring.length > 0) {
+                dot.classList.remove('hidden');
+                list.innerHTML = expiring.map(m => {
+                    const diff = Math.ceil((new Date(m.expiry) - now) / (1000 * 60 * 60 * 24));
+                    return `
+                        <div class="notif-item">
+                            <div>
+                                <p class="text-[10px] font-black uppercase text-white">${m.name}</p>
+                                <p class="text-[8px] text-red-500 font-bold uppercase">Expiry in ${diff} days: ${m.expiry}</p>
+                            </div>
+                            <div class="flex gap-3">
+                                <button onclick="editModel(${m.id}); toggleNotifs(); closeNotifItem(this)" class="text-[8px] font-black text-zinc-300 hover:text-white uppercase">Edit</button>
+                                <button onclick="closeNotifItem(this)" class="text-[8px] font-black text-zinc-500 hover:text-zinc-300 uppercase">Hide</button>
+                                <button onclick="deleteModel(${m.id}); closeNotifItem(this)" class="text-[8px] font-black text-red-600 hover:text-red-400 uppercase">Delete Model</button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                dot.classList.add('hidden');
+                list.innerHTML = `<p class="text-[9px] text-center text-zinc-600 py-4 uppercase">No contract alerts</p>`;
+            }
+        }
+
+        function closeNotifItem(btn) {
+            const item = btn.closest('.notif-item');
+            if (item) item.remove();
+            if (document.getElementById('notifList').children.length === 0) {
+                document.getElementById('notifDot').classList.add('hidden');
+            }
+        }
+
+        async function downloadResume() {
+            const m = state.currentModel;
+            if (!m) return;
+
+            const div = document.createElement('div');
+            div.style.padding = "50px"; 
+            div.style.background = "#fff"; 
+            div.style.color = "#000"; 
+            div.style.fontFamily = "sans-serif";
+
+            const escapeHtml = (str) => {
+                if (!str) return '';
+                return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+            };
+
+            const showsText = escapeHtml(m.shows || 'Professional experience data.');
+
+            div.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:3px solid #000; padding-bottom:30px; margin-bottom:40px;">
+                    ${state.pdfLogo ? `<img src="${state.pdfLogo}" style="height:115px;">` : `<h1 style="font-size:40px; font-weight:900;">${state.logo}</h1>`}
+                    <div style="text-align:right">
+                        <h2 style="font-size:32px; text-transform:uppercase; margin:0;">${escapeHtml(m.name)}</h2>
+                        <p style="color:#777; font-size:12px; letter-spacing:3px;">TALENT CARD</p>
+                    </div>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 40px;">
+                    <img src="${m.imgs?.[0] || ''}" style="width:100%; border-radius:10px;">
+                    <div>
+                        <div style="margin-bottom:25px;">
+                            <h3 style="background:#000; color:#fff; padding:6px 12px; font-size:13px; text-transform:uppercase; border-radius:4px;">Physical Profile</h3>
+                            <div style="padding:10px; font-size:15px; line-height:1.8;">
+                                <p><b>Height:</b> ${m.height} cm</p>
+                                <p><b>Weight:</b> ${m.weight} kg</p>
+                                <p><b>Shoe:</b> ${m.shoe}</p>
+                                <p><b>Meas:</b> ${escapeHtml(m.params || '-')}</p>
+                            </div>
+                        </div>
+                        <div style="margin-bottom:25px;">
+                            <h3 style="background:#000; color:#fff; padding:6px 12px; font-size:13px; text-transform:uppercase; border-radius:4px;">Contact Details</h3>
+                            <div style="padding:10px; font-size:14px; line-height:1.6;">
+                                <p><b>Tel:</b> ${escapeHtml(m.phone || '-')}</p>
+                                <p><b>Insta:</b> ${escapeHtml(m.insta || '-')}</p>
+                                <p><b>Email:</b> ${escapeHtml(m.email || '-')}</p>
+                            </div>
+                        </div>
+                        <div>
+                            <h3 style="background:#000; color:#fff; padding:6px 12px; font-size:13px; text-transform:uppercase; border-radius:4px;">Experience</h3>
+                            <div style="padding:10px; font-size:13px; color:#444; line-height:1.5; white-space:pre-line;">
+                                ${showsText}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            const opt = { margin: 10, filename: `${m.name}_BIG.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 3 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } };
+            html2pdf().from(div).set(opt).save();
+        }
+
+        const fireflies = [];
+        for (let i = 0; i < 20; i++) {
+            const el = document.createElement('div'); el.className = 'firefly';
+            document.body.appendChild(el);
+            fireflies.push({ 
+                el, x: Math.random() * 100, y: Math.random() * 100, 
+                vx: (Math.random() - 0.5) * 0.05, vy: (Math.random() - 0.5) * 0.05 
+            });
+        }
+
+        function animateFireflies() {
+            fireflies.forEach(f => {
+                f.vx += (Math.random() - 0.5) * 0.005; 
+                f.vy += (Math.random() - 0.5) * 0.005;
+                f.x += f.vx; f.y += f.vy;
+                if (f.x < 0 || f.x > 100) f.vx *= -1; 
+                if (f.y < 0 || f.y > 100) f.vy *= -1;
+                f.el.style.left = `${f.x}vw`; f.el.style.top = `${f.y}vh`;
+            });
+            requestAnimationFrame(animateFireflies);
+        }
+
+        const canvas = document.getElementById('bg-canvas');
+        const ctx = canvas.getContext('2d');
+        let pts = [];
+        window.onmousemove = (e) => { state.mouse.x = e.clientX; state.mouse.y = e.clientY; };
+        window.onresize = () => { 
+            canvas.width = window.innerWidth; canvas.height = window.innerHeight; 
+        };
+
+        function initBG() {
+            canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+            pts = [];
+            for(let i=0; i<80; i++) {
+                pts.push({ 
+                    x: Math.random()*canvas.width, 
+                    y: Math.random()*canvas.height, 
+                    v: Math.random()*0.3 + 0.1, 
+                    s: Math.random()*2,
+                    o: Math.random()
+                });
+            }
+        }
+
+        function drawBG() {
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            pts.forEach(p => { 
+                let dx = state.mouse.x - p.x;
+                let dy = state.mouse.y - p.y;
+                let dist = Math.sqrt(dx*dx + dy*dy);
+                
+                if(dist < 250) {
+                    p.x += dx * 0.01;
+                    p.y += dy * 0.01;
+                }
+
+                ctx.fillStyle = `rgba(255,255,255,${0.05 + p.o * 0.1})`;
+                ctx.beginPath(); 
+                ctx.arc(p.x, p.y, p.s, 0, Math.PI*2); 
+                ctx.fill();
+                
+                p.y -= p.v;
+                if(p.y < 0) {
+                    p.y = canvas.height;
+                    p.x = Math.random() * canvas.width;
+                }
+            });
+            requestAnimationFrame(drawBG);
+        }
+
+        if (window.innerWidth < 768) {
+            pts = [];
+            for(let i=0; i<30; i++) {
+                pts.push({ 
+                    x: Math.random()*canvas.width, 
+                    y: Math.random()*canvas.height, 
+                    v: Math.random()*0.3 + 0.1, 
+                    s: Math.random()*2,
+                    o: Math.random()
+                });
+            }
+            document.querySelectorAll('.firefly').forEach(el => el.remove());
+        }
+
+        changeLang(state.lang);
+        initBG();
+        drawBG();
+        animateFireflies();
+        render();
+    </script>
+</body>
+</html>
