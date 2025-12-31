@@ -1320,62 +1320,71 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         async function downloadResume() {
-            const m = state.currentModel;
-            if (!m) return;
+    const m = state.currentModel;
+    if (!m) return;
 
-            const div = document.createElement('div');
-            div.style.padding = "50px"; 
-            div.style.background = "#fff"; 
-            div.style.color = "#000"; 
-            div.style.fontFamily = "sans-serif";
+    const div = document.createElement('div');
+    div.style.padding = "50px"; 
+    div.style.background = "#fff"; 
+    div.style.color = "#000"; 
+    div.style.fontFamily = "sans-serif";
 
-            const escapeHtml = (str) => {
-                if (!str) return '';
-                return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
-            };
+    const escapeHtml = (str) => !str ? '' : str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
 
-            const showsText = escapeHtml(m.shows || 'Professional experience data.');
+    const showsText = escapeHtml(m.shows || 'Professional experience data.');
 
-            div.innerHTML = `
-                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:3px solid #000; padding-bottom:30px; margin-bottom:40px;">
-                    ${state.pdfLogo ? `<img src="${state.pdfLogo}" style="height:115px; object-fit:contain;">` : `<h1 style="font-size:40px; font-weight:900;">${state.logo}</h1>`}
-                    <div style="text-align:right">
-                        <h2 style="font-size:32px; text-transform:uppercase; margin:0;">${escapeHtml(m.name)}</h2>
-                        <p style="color:#777; font-size:12px; letter-spacing:3px;">TALENT CARD</p>
+    // Fallback для фото и логотипа
+    const modelPhoto = m.imgs?.[0] || 'https://via.placeholder.com/800x1067/000000/FFFFFF?text=No+Photo';
+    const agencyLogo = state.pdfLogo || 'https://via.placeholder.com/300x115/000000/FFFFFF?text=BIG+LOGO';
+
+    div.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:3px solid #000; padding-bottom:30px; margin-bottom:40px;">
+            <img src="${agencyLogo}" style="height:115px; object-fit:contain;">
+            <div style="text-align:right">
+                <h2 style="font-size:32px; text-transform:uppercase; margin:0;">${escapeHtml(m.name)}</h2>
+                <p style="color:#777; font-size:12px; letter-spacing:3px;">TALENT CARD</p>
+            </div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:40px;">
+            <img src="${modelPhoto}" style="width:100%; height:auto; max-height:500px; object-fit:contain; border-radius:10px;">
+            <div>
+                <div style="margin-bottom:25px;">
+                    <h3 style="background:#000; color:#fff; padding:6px 12px; font-size:13px; text-transform:uppercase; border-radius:4px;">Physical Profile</h3>
+                    <div style="padding:10px; font-size:15px; line-height:1.8;">
+                        <p><b>Height:</b> ${m.height || '-'} cm</p>
+                        <p><b>Weight:</b> ${m.weight || '-'} kg</p>
+                        <p><b>Shoe:</b> ${m.shoe || '-'}</p>
+                        <p><b>Meas:</b> ${escapeHtml(m.params || '-')}</p>
                     </div>
                 </div>
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 40px;">
-                    <img src="${m.imgs?.[0] || ''}" style="width:100%; border-radius:10px;">
-                    <div>
-                        <div style="margin-bottom:25px;">
-                            <h3 style="background:#000; color:#fff; padding:6px 12px; font-size:13px; text-transform:uppercase; border-radius:4px;">Physical Profile</h3>
-                            <div style="padding:10px; font-size:15px; line-height:1.8;">
-                                <p><b>Height:</b> ${m.height} cm</p>
-                                <p><b>Weight:</b> ${m.weight} kg</p>
-                                <p><b>Shoe:</b> ${m.shoe}</p>
-                                <p><b>Meas:</b> ${escapeHtml(m.params || '-')}</p>
-                            </div>
-                        </div>
-                        <div style="margin-bottom:25px;">
-                            <h3 style="background:#000; color:#fff; padding:6px 12px; font-size:13px; text-transform:uppercase; border-radius:4px;">Contact Details</h3>
-                            <div style="padding:10px; font-size:14px; line-height:1.6;">
-                                <p><b>Tel:</b> ${escapeHtml(m.phone || '-')}</p>
-                                <p><b>Insta:</b> ${escapeHtml(m.insta || '-')}</p>
-                                <p><b>Email:</b> ${escapeHtml(m.email || '-')}</p>
-                            </div>
-                        </div>
-                        <div>
-                            <h3 style="background:#000; color:#fff; padding:6px 12px; font-size:13px; text-transform:uppercase; border-radius:4px;">Experience</h3>
-                            <div style="padding:10px; font-size:13px; color:#444; line-height:1.5; white-space:pre-line;">
-                                ${showsText}
-                            </div>
-                        </div>
+                <div style="margin-bottom:25px;">
+                    <h3 style="background:#000; color:#fff; padding:6px 12px; font-size:13px; text-transform:uppercase; border-radius:4px;">Contact Details</h3>
+                    <div style="padding:10px; font-size:14px; line-height:1.6;">
+                        <p><b>Tel:</b> ${escapeHtml(m.phone || '-')}</p>
+                        <p><b>Insta:</b> ${escapeHtml(m.insta || '-')}</p>
+                        <p><b>Email:</b> ${escapeHtml(m.email || '-')}</p>
                     </div>
                 </div>
-            `;
-            const opt = { margin: 10, filename: `${m.name}_BIG.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 3 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } };
-            html2pdf().from(div).set(opt).save();
-        }
+                <div>
+                    <h3 style="background:#000; color:#fff; padding:6px 12px; font-size:13px; text-transform:uppercase; border-radius:4px;">Experience</h3>
+                    <div style="padding:10px; font-size:13px; color:#444; line-height:1.5; white-space:pre-line;">
+                        ${showsText}
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    const opt = { 
+        margin: 10, 
+        filename: `${m.name}_BIG.pdf`, 
+        image: { type: 'jpeg', quality: 0.98 }, 
+        html2canvas: { scale: 3, useCORS: true },  // useCORS для внешних изображений
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } 
+    };
+    
+    html2pdf().from(div).set(opt).save();
+}
 
 // ... после функции downloadResume() и перед fireflies ...
 
