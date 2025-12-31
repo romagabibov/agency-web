@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BIG | Professional Management System</title>
+    <title>BIG DATABASE | Professional Management System</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -13,7 +13,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage-compat.js"></script>
 
     <style>
         :root { 
@@ -289,6 +288,24 @@
         #cabName {
             font-size: clamp(2.5rem, 10vw, 4.5rem);
         }
+
+        #toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-weight: 800;
+            text-transform: uppercase;
+            font-size: 0.9rem;
+            color: white;
+            z-index: 2000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        #toast.success { background: rgba(0, 200, 0, 0.9); }
+        #toast.error { background: rgba(200, 0, 0, 0.9); }
     </style>
 </head>
 <body>
@@ -350,7 +367,7 @@
                         <label class="text-[9px] opacity-40 uppercase font-bold mb-2 block">Resume Categories:</label>
                         <textarea id="filtersEdit" placeholder="Woman, Man, Kids..." class="h-24 mb-4"></textarea>
                         <label class="text-[9px] opacity-40 uppercase font-bold mb-2 block">Resume Logo (Black/White PNG):</label>
-                        <input type="file" id="pdfLogoInp" class="mb-4 text-[10px]">
+                        <input type="file" id="pdfLogoInp" accept="image/png,image/jpeg" class="mb-4 text-[10px]">
                         <button onclick="saveGlobalSettings()" class="ui-btn-size w-full !bg-white !text-black" data-t="sync">Update System</button>
                     </div>
 
@@ -401,7 +418,7 @@
                                 <textarea id="mShows" placeholder="CAREER HIGHLIGHTS & EXPERIENCE" class="flex-1 min-h-[160px]"></textarea>
                                 <div class="p-4 border-2 border-dashed border-white/10 rounded-2xl text-center">
                                     <label class="text-[10px] uppercase font-bold opacity-50 block mb-2">Portfolio Upload (Multiple)</label>
-                                    <input type="file" id="fInp" multiple class="text-[10px] text-zinc-500">
+                                    <input type="file" id="fInp" multiple accept="image/*" class="text-[10px] text-zinc-500">
                                 </div>
                                 <button type="submit" class="ui-btn-size !h-16 !bg-white !text-black shadow-xl shadow-white/5" data-t="deploy">Save Changes</button>
                             </div>
@@ -511,6 +528,9 @@
         </div>
     </div>
 
+    <!-- Toast уведомление -->
+    <div id="toast"></div>
+
     <script>
         const translations = {
             ru: { filter: "Фильтр", access: "Вход", console: "Консоль", exit: "Выход", sync: "Обновить", deploy: "Сохранить", all: "Все", apply: "Применить", reset: "Сброс", height: "Рост", weight: "Вес", shoe: "Обувь", status: "Статус", expiry: "Контракт", params: "Параметры", woman: "Девушки", man: "Мужчины", kids: "Дети" },
@@ -536,36 +556,58 @@
 
         window.currentZoom = null;
 
-        const firebaseConfig = { databaseURL: "https://big-agency-default-rtdb.firebaseio.com" }; 
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
-        const storage = firebase.storage();
+        const firebaseConfig = {
+        apiKey: "AIzaSyBPPD3mUUmMWvaDxvP6uy22bBaSfXd49LI",  // Обязательно укажите из Firebase Console
+        databaseURL: "https://big-agency-default-rtdb.firebaseio.com",
+        projectId: "big-agency"
+};
 
-        // Санитизация ключей для Firebase Realtime Database
-        function sanitizeKey(str) {
-            if (typeof str !== 'string') return str;
-            return str.replace(/[.#$[\]/]/g, '_');
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+db.ref('agency_cloud_v1').on('value', snap => {
+    try {
+        const data = snap.val() || {};
+        state.models = Array.isArray(data.models) ? data.models : (data.models ? Object.values(data.models) : []);
+        state.logo = data.logo || "BIG";
+        state.categories = Array.isArray(data.categories) ? data.categories : ["All"];
+        
+        // Усиленная защита: принудительно преобразуем в массив
+        if (Array.isArray(data.models)) {
+            state.models = data.models;
+        } else if (data.models && typeof data.models === 'object') {
+            // Если по ошибке сохранён объект (с ключами), конвертируем в массив
+            state.models = Object.values(data.models);
+        } else {
+            state.models = [];
         }
+        
+        state.users = Array.isArray(data.users) ? data.users : [];
+        state.pdfLogo = data.pdfLogo || null;
+        state.lastLoginTime = data.lastLoginTime || {};
+        
+        // Защита: инициализация дефолтного админа
+        if (state.users.length === 0) {
+            state.users = [{login: "admin", hash: "5d3a967f3c2f77278067583633916955acea6bc8e3500f3d4ded8c74827cf3e604c49450f6294dfde71ef6710efe6430"}];
+        }
+        
+        render();
+        checkExpirations();
+    } catch (err) {
+        console.error('Ошибка загрузки данных:', err);
+        showToast('Ошибка связи с базой данных', 'error');
+    } finally {
+        document.getElementById('loader-screen').style.display = 'none';
+    }
+});
 
-        db.ref('agency_cloud_v1').on('value', snap => {
-            const data = snap.val() || {};
-            state.logo = data.logo || "BIG";
-            state.categories = Array.isArray(data.categories) ? data.categories : ["All"];
-            state.models = Array.isArray(data.models) ? data.models : [];
-            state.users = Array.isArray(data.users) ? data.users : [];
-            state.pdfLogo = data.pdfLogo || null;
-            state.lastLoginTime = data.lastLoginTime || {};
-            
-            if (state.users.length === 0) {
-                state.users = [{login: "admin", hash: "5d3a967f3c2f77278067583633916955acea6bc8e3500f3d4ded8c74827cf3e604c49450f6294dfde71ef6710efe6430"}];
-            }
-            
-            render();
-            checkExpirations();
-            document.getElementById('loader-screen').style.display = 'none';
-        });
+    const sync = async () => {
+    console.log('Начинаем синхронизацию с Firebase...');
+    console.log('Количество моделей:', state.models.length);
+    console.log('Пример модели с фото:', state.models.find(m => m.imgs?.length > 0)); // Для отладки
 
-        const sync = () => db.ref('agency_cloud_v1').update({ 
+    try {
+        await db.ref('agency_cloud_v1').update({ 
             models: state.models, 
             logo: state.logo, 
             categories: state.categories, 
@@ -573,6 +615,27 @@
             users: state.users,
             lastLoginTime: state.lastLoginTime
         });
+        console.log('Синхронизация успешна');
+    } catch (error) {
+        console.error('Ошибка в sync():', error);
+        console.error('Код ошибки:', error.code);
+        console.error('Сообщение:', error.message);
+        throw error; // Пробрасываем для обработки в onsubmit
+    }
+};
+
+        // Toast уведомление
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = type === 'success' ? 'success' : 'error';
+            toast.style.opacity = '1';
+            
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => { toast.textContent = ''; }, 300);
+            }, 2000);
+        }
 
         function changeLang(l) { 
             state.lang = l; 
@@ -613,7 +676,7 @@
 
             document.getElementById('modelsGrid').innerHTML = filtered.map(m => `
                 <div onclick="showDetails(${m.id})" class="glass-panel rounded-[30px] overflow-hidden group cursor-pointer transition hover:scale-[1.02] fade-in">
-                    <img src="${m.imgs?.[0] || 'https://via.placeholder.com/600x800?text=No+Image'}" class="aspect-[3/4] object-cover w-full grayscale group-hover:grayscale-0 duration-700">
+                    <img src="${m.imgs?.[0] || 'https://via.placeholder.com/600x800/000000/333333?text=%20'}" class="aspect-[3/4] object-cover w-full grayscale group-hover:grayscale-0 duration-700">
                     <div class="p-6 flex justify-between items-center">
                         <div>
                             <h3 class="font-black uppercase italic text-sm">${m.name}</h3>
@@ -628,7 +691,6 @@
             renderAdminModels();
             renderAdminUsers();
 
-            // Инициализация зума на главной странице
             if (window.currentZoom) window.currentZoom.detach();
             window.currentZoom = mediumZoom('#modelsGrid img', { background: '#000', margin: 20 });
         }
@@ -656,25 +718,98 @@
             document.querySelector('#formContainer').scrollIntoView({ behavior: 'smooth' });
         };
 
-        document.getElementById('addModelForm').onsubmit = async (e) => {
-            e.preventDefault();
-            
-            const id = document.getElementById('mId').value || Date.now();
+       // Ждем полной загрузки DOM перед привязкой обработчика
+document.addEventListener('DOMContentLoaded', () => {
+    const form = document.getElementById('addModelForm');
+    if (!form) {
+        console.error('Форма addModelForm не найдена!');
+        return;
+    }
+
+    form.onsubmit = async (e) => {
+        e.preventDefault();
+        console.log('✅ Форма отправлена. Начинаем обработку...');
+
+        // Создаём прогресс-бар сразу
+        let progressContainer = document.getElementById('uploadProgressContainer');
+        if (progressContainer) progressContainer.remove();
+
+        progressContainer = document.createElement('div');
+        progressContainer.id = 'uploadProgressContainer';
+        progressContainer.className = 'glass-panel p-4 rounded-2xl mt-4 mb-4';
+        progressContainer.innerHTML = `
+            <p class="text-sm font-bold text-white mb-2">Обработка модели...</p>
+            <div class="bg-white/10 rounded-full h-3 overflow-hidden mb-2">
+                <div id="progressBar" class="bg-gradient-to-r from-white to-blue-400 h-full transition-all duration-500" style="width:0%"></div>
+            </div>
+            <p class="text-xs text-zinc-400" id="progressText">Подготовка данных...</p>
+        `;
+        form.appendChild(progressContainer);
+
+        try {
+            const id = document.getElementById('mId').value || Date.now().toString();
             const existingIndex = state.models.findIndex(x => x.id == id);
             let imgs = existingIndex >= 0 ? state.models[existingIndex].imgs || [] : [];
-            
-            // Загрузка фотографий
-            const files = document.getElementById('fInp').files;
-            if (files.length > 0) {
-                for (const file of files) {
-                    const storageRef = storage.ref(`models/${id}/${Date.now()}_${file.name}`);
-                    await storageRef.put(file);
-                    const url = await storageRef.getDownloadURL();
-                    imgs.push(url);
-                }
-                document.getElementById('fInp').value = '';
+
+            const photoFiles = Array.from(document.getElementById('fInp').files || []);
+            const totalFiles = photoFiles.length;
+
+            let loadedFiles = 0;
+
+            // Загрузка фотографий (если есть)
+            if (totalFiles > 0) {
+                document.getElementById('progressText').textContent = 'Загрузка фото... 0%';
+
+                const IMG_BB_API_KEY = 'd5a59366e85a615bbe2ee62cccaad99e';
+
+                const uploadPromises = photoFiles.map(async (file, index) => {
+                    if (file.size > 32 * 1024 * 1024) {
+                        console.warn(`⚠️ Файл ${file.name} слишком большой (>32 МБ)`);
+                        return null;
+                    }
+
+                    const formData = new FormData();
+                    formData.append('image', file);
+
+                    try {
+                        const resp = await fetch(`https://api.imgbb.com/1/upload?key=${IMG_BB_API_KEY}`, {
+                            method: 'POST',
+                            body: formData
+                        });
+
+                        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+                        const data = await resp.json();
+                        if (data.success && data.data?.url) {
+                            console.log(`✅ Фото ${index + 1} загружено`);
+                            return data.data.url;
+                        } else {
+                            throw new Error(data.error?.message || 'ImgBB error');
+                        }
+                    } catch (err) {
+                        console.error(`❌ Ошибка загрузки ${file.name}:`, err);
+                        return null;
+                    }
+                });
+
+                const results = await Promise.allSettled(uploadPromises);
+                const successfulUrls = results
+                    .filter(r => r.status === 'fulfilled' && r.value)
+                    .map(r => r.value);
+
+                imgs = [...imgs, ...successfulUrls];
+                loadedFiles = successfulUrls.length;
+
+                const photoProgress = (loadedFiles / totalFiles) * 50; // 50% за фото
+                document.getElementById('progressBar').style.width = `${photoProgress}%`;
+                document.getElementById('progressText').textContent = `Фото загружено: ${loadedFiles}/${totalFiles}`;
+            } else {
+                // Если фото нет — сразу 50%
+                document.getElementById('progressBar').style.width = '50%';
+                document.getElementById('progressText').textContent = 'Фото отсутствуют';
             }
 
+            // Сбор данных модели
             const model = {
                 id,
                 name: document.getElementById('mName').value.trim(),
@@ -686,41 +821,108 @@
                 status: document.getElementById('mStatus').value,
                 expiry: document.getElementById('mExpiry').value || null,
                 cat: document.getElementById('mCat').value,
-                height: document.getElementById('mH').value,
-                weight: document.getElementById('mW').value,
-                shoe: document.getElementById('mS').value,
+                height: document.getElementById('mH').value || '',
+                weight: document.getElementById('mW').value || '',
+                shoe: document.getElementById('mS').value || '',
                 params: document.getElementById('mP').value.trim(),
                 shows: document.getElementById('mShows').value.trim(),
                 imgs: imgs
             };
 
+            // Добавляем/обновляем в локальном состоянии
             if (existingIndex >= 0) {
                 state.models[existingIndex] = model;
             } else {
                 state.models.push(model);
             }
 
-            sync();
-            render();
-            e.target.reset();
-            document.getElementById('mId').value = '';
-        };
+            // Синхронизация с Firebase (оставшиеся 50%)
+            document.getElementById('progressText').textContent = 'Сохранение в базу данных...';
+            document.getElementById('progressBar').style.width = '75%';
 
+            await sync();
+
+            document.getElementById('progressBar').style.width = '100%';
+            document.getElementById('progressText').textContent = 'Готово!';
+
+            showToast('Модель сохранена успешно', 'success');
+            render();
+
+        } catch (error) {
+            console.error('Ошибка сохранения модели:', error);
+            showToast('Ошибка сохранения. Проверьте консоль.', 'error');
+
+            // Откат локальных изменений при неудаче
+            if (existingIndex === -1) {
+                state.models.pop();
+            }
+            render();
+        } finally {
+            // Очищаем прогресс через 2 секунды
+            setTimeout(() => {
+                const prog = document.getElementById('uploadProgressContainer');
+                if (prog) prog.remove();
+            }, 2000);
+
+            document.getElementById('fInp').value = '';
+            if (!document.getElementById('mId').value) {
+                form.reset();
+            }
+        }
+    };
+});
         window.deleteModel = (id) => {
-            if (confirm('Delete this model permanently?')) {
+            if (confirm('Удалить модель навсегда?')) {
                 state.models = state.models.filter(m => m.id != id);
-                sync();
+                sync()
+                    .then(() => showToast('Модель удалена', 'success'))
+                    .catch(() => showToast('Ошибка удаления', 'error'));
                 render();
             }
         };
 
-        window.saveGlobalSettings = () => {
-            state.logo = document.getElementById('logoEdit').value.trim() || 'BIG';
-            const cats = document.getElementById('filtersEdit').value.split(',').map(c => c.trim()).filter(c => c);
-            state.categories = ['All', ...cats];
-            sync();
-            render();
-        };
+        async function saveGlobalSettings() {
+    state.logo = document.getElementById('logoEdit').value.trim() || "BIG";
+    state.categories = ["All", ...document.getElementById('filtersEdit').value.split(',').map(c => c.trim()).filter(Boolean)];
+    
+    const file = document.getElementById('pdfLogoInp').files[0];
+    if (file) {
+        const IMG_BB_API_KEY = 'd5a59366e85a615bbe2ee62cccaad99e';  // Ваш ключ ImgBB
+        
+        const formData = new FormData();
+        formData.append('image', file);
+        
+        try {
+            const resp = await fetch(`https://api.imgbb.com/1/upload?key=${IMG_BB_API_KEY}`, {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+            
+            const data = await resp.json();
+            if (data.success && data.data?.url) {
+                state.pdfLogo = data.data.url;
+                showToast('Логотип загружен успешно (через ImgBB)', 'success');
+            } else {
+                throw new Error(data.error?.message || 'Ошибка ImgBB');
+            }
+        } catch (error) {
+            console.error('Ошибка загрузки логотипа:', error);
+            showToast('Не удалось загрузить логотип. Проверьте файл или соединение.', 'error');
+            return;  // Прерываем сохранение при ошибке загрузки
+        }
+    }
+    
+    try {
+        await sync();
+        showToast('Настройки сохранены успешно', 'success');
+        render();
+    } catch (syncError) {
+        console.error('Ошибка синхронизации:', syncError);
+        showToast('Ошибка сохранения настроек в базу.', 'error');
+    }
+}
 
         function applyFilters() {
             state.paramsFilter.minH = parseInt(document.getElementById('fMinH').value) || 0;
@@ -783,14 +985,13 @@
             document.getElementById('cabName').innerText = m.name;
             const t = translations[state.lang];
             
-            // Цвет для даты окончания контракта
             let contractColor = '';
             if (m.expiry) {
                 const daysLeft = Math.ceil((new Date(m.expiry) - new Date()) / (1000 * 60 * 60 * 24));
                 if (daysLeft >= 0 && daysLeft <= 10) {
-                    const ratio = daysLeft / 10; // 1 = 10 дней, 0 = 0 дней
+                    const ratio = daysLeft / 10;
                     const r = 255;
-                    const g = Math.round(165 * ratio); // от 165 (оранжевый) до 0 (красный)
+                    const g = Math.round(165 * ratio);
                     const b = 0;
                     contractColor = `style="color: rgb(${r},${g},${b});"`;
                 }
@@ -947,7 +1148,9 @@
             if (l && p) { 
                 const hashed = await hashPassword(p);
                 state.users.push({login: l, hash: hashed}); 
-                sync(); 
+                sync()
+                    .then(() => showToast('Администратор добавлен', 'success'))
+                    .catch(() => showToast('Ошибка добавления администратора', 'error'));
                 document.getElementById('newLogin').value = '';
                 document.getElementById('newPass').value = '';
                 renderAdminUsers();
@@ -955,9 +1158,11 @@
         };
 
         window.deleteAdmin = (i) => {
-            if(confirm('Revoke access for this admin?')) {
+            if(confirm('Удалить доступ для этого администратора?')) {
                 state.users.splice(i, 1);
-                sync();
+                sync()
+                    .then(() => showToast('Доступ удалён', 'success'))
+                    .catch(() => showToast('Ошибка удаления доступа', 'error'));
                 renderAdminUsers();
             }
         };
@@ -974,7 +1179,7 @@
                             <button onclick="showAdminStats('${u.login}')" class="text-[9px] font-black px-2 py-1 bg-white/10 rounded hover:bg-white hover:text-black transition">!</button>
                             <span class="text-[9px] text-zinc-400">${timeStr}</span>
                         </div>
-                        ${u.login !== 'admin' ? `<button onclick="deleteAdmin(${i})" class="text-red-500 font-black uppercase">Revoke</button>` : '<span class="text-zinc-600 uppercase font-black">Root</span>'}
+                        ${u.login !== 'admin' ? `<button onclick="deleteAdmin(${i})" class="text-red-500 font-black uppercase">Delete</button>` : '<span class="text-zinc-600 uppercase font-black">Root</span>'}
                     </div>
                 `;
             }).join('');
@@ -1133,7 +1338,7 @@
 
             div.innerHTML = `
                 <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:3px solid #000; padding-bottom:30px; margin-bottom:40px;">
-                    ${state.pdfLogo ? `<img src="${state.pdfLogo}" style="height:115px;">` : `<h1 style="font-size:40px; font-weight:900;">${state.logo}</h1>`}
+                    ${state.pdfLogo ? `<img src="${state.pdfLogo}" style="height:115px; object-fit:contain;">` : `<h1 style="font-size:40px; font-weight:900;">${state.logo}</h1>`}
                     <div style="text-align:right">
                         <h2 style="font-size:32px; text-transform:uppercase; margin:0;">${escapeHtml(m.name)}</h2>
                         <p style="color:#777; font-size:12px; letter-spacing:3px;">TALENT CARD</p>
@@ -1172,6 +1377,18 @@
             html2pdf().from(div).set(opt).save();
         }
 
+// ... после функции downloadResume() и перед fireflies ...
+
+            function sanitizeKey(str) {
+        if (!str) return '';
+        return str
+        .toLowerCase()
+        .replace(/[^a-z0-9_-]/g, '')
+        .replace(/_+/g, '_')
+        .replace(/-+/g, '-')
+        .replace(/^[_-]|[_-]$/g, '');
+}
+
         const fireflies = [];
         for (let i = 0; i < 20; i++) {
             const el = document.createElement('div'); el.className = 'firefly';
@@ -1201,6 +1418,8 @@
         window.onresize = () => { 
             canvas.width = window.innerWidth; canvas.height = window.innerHeight; 
         };
+
+// ... дальше код с fireflies ...
 
         function initBG() {
             canvas.width = window.innerWidth; canvas.height = window.innerHeight;
@@ -1261,6 +1480,6 @@
         drawBG();
         animateFireflies();
         render();
-    </script>
+</script>
 </body>
 </html>
