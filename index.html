@@ -557,7 +557,7 @@
         window.currentZoom = null;
 
         const firebaseConfig = {
-        apiKey: "AIzaSyBPPD3mUUmMWvaDxvP6uy22bBaSfXd49LI",  // Обязательно укажите из Firebase Console
+        apiKey: "AIzaSyBPPD3mUUmMWvaDxvP6uy22bBaSfXd49LI",  
         databaseURL: "https://big-agency-default-rtdb.firebaseio.com",
         projectId: "big-agency"
 };
@@ -572,11 +572,11 @@ db.ref('agency_cloud_v1').on('value', snap => {
         state.logo = data.logo || "BIG";
         state.categories = Array.isArray(data.categories) ? data.categories : ["All"];
         
-        // Усиленная защита: принудительно преобразуем в массив
+        
         if (Array.isArray(data.models)) {
             state.models = data.models;
         } else if (data.models && typeof data.models === 'object') {
-            // Если по ошибке сохранён объект (с ключами), конвертируем в массив
+            
             state.models = Object.values(data.models);
         } else {
             state.models = [];
@@ -718,7 +718,7 @@ db.ref('agency_cloud_v1').on('value', snap => {
             document.querySelector('#formContainer').scrollIntoView({ behavior: 'smooth' });
         };
 
-       // Ждем полной загрузки DOM перед привязкой обработчика
+       
 document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('addModelForm');
     if (!form) {
@@ -730,7 +730,7 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         console.log('✅ Форма отправлена. Начинаем обработку...');
 
-        // Создаём прогресс-бар сразу
+       
         let progressContainer = document.getElementById('uploadProgressContainer');
         if (progressContainer) progressContainer.remove();
 
@@ -756,7 +756,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             let loadedFiles = 0;
 
-            // Загрузка фотографий (если есть)
+           
             if (totalFiles > 0) {
                 document.getElementById('progressText').textContent = 'Загрузка фото... 0%';
 
@@ -829,14 +829,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 imgs: imgs
             };
 
-            // Добавляем/обновляем в локальном состоянии
+           
             if (existingIndex >= 0) {
                 state.models[existingIndex] = model;
             } else {
                 state.models.push(model);
             }
 
-            // Синхронизация с Firebase (оставшиеся 50%)
+          
             document.getElementById('progressText').textContent = 'Сохранение в базу данных...';
             document.getElementById('progressBar').style.width = '75%';
 
@@ -852,13 +852,13 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Ошибка сохранения модели:', error);
             showToast('Ошибка сохранения. Проверьте консоль.', 'error');
 
-            // Откат локальных изменений при неудаче
+            
             if (existingIndex === -1) {
                 state.models.pop();
             }
             render();
         } finally {
-            // Очищаем прогресс через 2 секунды
+           
             setTimeout(() => {
                 const prog = document.getElementById('uploadProgressContainer');
                 if (prog) prog.remove();
@@ -887,7 +887,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const file = document.getElementById('pdfLogoInp').files[0];
     if (file) {
-        const IMG_BB_API_KEY = 'd5a59366e85a615bbe2ee62cccaad99e';  // Ваш ключ ImgBB
+        const IMG_BB_API_KEY = 'd5a59366e85a615bbe2ee62cccaad99e';  
         
         const formData = new FormData();
         formData.append('image', file);
@@ -1379,14 +1379,13 @@ document.addEventListener('DOMContentLoaded', () => {
         margin: 10, 
         filename: `${m.name}_BIG.pdf`, 
         image: { type: 'jpeg', quality: 0.98 }, 
-        html2canvas: { scale: 3, useCORS: true },  // useCORS для внешних изображений
+        html2canvas: { scale: 3, useCORS: true },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } 
     };
     
     html2pdf().from(div).set(opt).save();
 }
 
-// ... после функции downloadResume() и перед fireflies ...
 
             function sanitizeKey(str) {
         if (!str) return '';
@@ -1428,7 +1427,6 @@ document.addEventListener('DOMContentLoaded', () => {
             canvas.width = window.innerWidth; canvas.height = window.innerHeight; 
         };
 
-// ... дальше код с fireflies ...
 
         function initBG() {
             canvas.width = window.innerWidth; canvas.height = window.innerHeight;
@@ -1492,3 +1490,4 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 </body>
 </html>
+
